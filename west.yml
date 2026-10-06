@@ -1,0 +1,64 @@
+# Copyright 2024 Silicon Laboratories Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# West manifest file for Simplicity SDK for Zephyr.
+#
+# The west workspace configuration file, .west/config, sets the
+# path to the project containing this file in the [manifest] section's
+# "path" variable.
+#
+# You are free to create your own manifest files and put them in any
+# repository you want, to create your own custom workspaces.
+# For example, you could create a manifest file in your own application
+# directory, which would pull this repository in as an ordinary project.
+#
+# You can pass your manifest repository to west init when creating a
+# new workspace. See the west documentation for more information.
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: silabs
+      url-base: https://github.com/siliconlabssoftware
+
+  projects:
+    - name: zephyr
+      remote: silabs
+      revision: f60fcfc44b27852017a302a08dfe236ccf94804a
+      import:
+        # Simplicity SDK for Zephyr imports the Zephyr main tree at the
+        # revision given above. Only the modules named below are imported.
+        # If a module is overridden it is not listed here, and instead
+        # added separately at the top level.
+        name-allowlist:
+          - cmsis-dsp
+          - cmsis-nn
+          - cmsis_6
+          - fatfs
+          - littlefs
+          - lvgl
+          - mbedtls
+          - mldsa-native
+          - openthread
+          - picolibc
+          - segger
+          - zcbor
+    - name: hal_silabs
+      remote: silabs
+      revision: 80751f9d28b9f96b154fd70f36d562ff3f10dd40
+      path: modules/hal/silabs
+    - name: mcuboot
+      remote: silabs
+      repo-path: zephyr-mcuboot
+      revision: 40fbecd086a72f479fcfdce1172cbab9db87f4cd
+      path: bootloader/mcuboot
+    - name: tf-psa-crypto
+      remote: silabs
+      repo-path: zephyr-tf-psa-crypto
+      revision: 495a207fb17938041cad5d419fba1275b076c39f
+      path: modules/crypto/tf-psa-crypto
+    - name: zephyr-hal-silabs-extra
+      remote: silabs
+      revision: 5f7327c94bd73116bc92cb220d3c85356a57fe11
+      path: modules/hal/silabs_extra

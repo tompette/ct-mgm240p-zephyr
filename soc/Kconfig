@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Silicon Laboratories Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Because of f8a5ebfd2, check_compliance.py absolutely wants to match at least
+# one CONFIG option. So keep this token: CONFIG_BOARD
+
+rsource "*/Kconfig"

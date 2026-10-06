@@ -1,0 +1,16 @@
+# Copyright (c) 2026 CTHINGS.CO
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: ct_mgm240p
+name: CTHINGS MGM240P
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 256
+flash: 1536
+supported:
+  - gpio
+  - uart
+vendor: ct

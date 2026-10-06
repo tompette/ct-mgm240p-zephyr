@@ -1,0 +1,15 @@
+# Copyright (c) 2026 CTHINGS.CO
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_CT_MGM240P
+
+config BOARD
+    default "ct_mgm240p"
+
+config CMU_HFXO_FREQ
+    default 40000000
+
+config CMU_LFXO_FREQ
+    default 32768
+
+endif # BOARD_CT_MGM240P

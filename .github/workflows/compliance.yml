@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Silicon Laboratories Inc.
+
+name: Compliance
+
+on:
+  pull_request:
+    types:
+    - edited
+    - opened
+    - reopened
+    - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  compliance:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+        path: zephyr-silabs
+
+    - name: Rebase onto the target branch
+      env:
+        BASE_REF: ${{ github.base_ref }}
+      working-directory: zephyr-silabs
+      run: |
+        git config --global user.email "you@example.com"
+        git config --global user.name "Your Name"
+        git remote -v
+        # Ensure there's no merge commits in the PR
+        [[ "$(git rev-list --merges --count origin/${BASE_REF}..)" == "0" ]] || \
+        (echo "::error ::Merge commits not allowed, rebase instead";false)
+        rm -fr ".git/rebase-apply"
+        rm -fr ".git/rebase-merge"
+        git rebase origin/${BASE_REF}
+        git clean -f -d
+        # debug
+        git log  --pretty=oneline | head -n 10
+
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: 3.12
+
+    - name: Setup Zephyr project
+      uses: zephyrproject-rtos/action-zephyr-setup@360ff9b36e58499d9eb28015cdcde7ca03a5b04d # v1.0.12
+      with:
+        app-path: zephyr-silabs
+        toolchains: arm-zephyr-eabi
+
+    - name: Install compliance-specific python dependencies
+      working-directory: zephyr-silabs
+      run: |
+        ZEPHYR_BASE="$(west topdir)/zephyr"
+        pip3 install -r $ZEPHYR_BASE/scripts/requirements-compliance.txt --require-hashes
+
+    - name: Setup Node.js
+      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      with:
+        node-version: "lts/*"
+        cache: npm
+        check-latest: true
+        cache-dependency-path: zephyr/scripts/ci/package-lock.json
+
+    - name: Install Node dependencies
+      run: npm --prefix zephyr/scripts/ci ci
+
+    - name: Run Compliance Tests
+      continue-on-error: true
+      id: compliance
+      working-directory: zephyr-silabs
+      run: |
+        ZEPHYR_BASE="$(west topdir)/zephyr"
+        $ZEPHYR_BASE/scripts/ci/check_compliance.py --annotate \
+        -e SysbuildKconfigBasic \
+        -e SysbuildKconfig \
+        -c origin/${GITHUB_BASE_REF}..
+
+    - name: upload-results
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      continue-on-error: true
+      with:
+        name: compliance.xml
+        path: zephyr-silabs/compliance.xml
+
+    - name: Upload dts linter patch
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      continue-on-error: true
+      if: hashFiles('dts_linter.patch') != ''
+      with:
+        name: dts_linter.patch
+        path: dts_linter.patch
+
+    - name: check-warns
+      working-directory: zephyr-silabs
+      run: |
+        ZEPHYR_BASE="$(west topdir)/zephyr"
+        if [[ ! -s "compliance.xml" ]]; then
+          exit 1;
+        fi
+
+        warns=("ClangFormat" "LicenseAndCopyrightCheck")
+        files=($($ZEPHYR_BASE/scripts/ci/check_compliance.py -l))
+
+        for file in "${files[@]}"; do
+          f="${file}.txt"
+          if [[ -s $f ]]; then
+            results=$(cat $f)
+            results="${results//'%'/'%25'}"
+            results="${results//$'\n'/'%0A'}"
+            results="${results//$'\r'/'%0D'}"
+
+            if [[ "${warns[@]}" =~ "${file}" ]]; then
+              echo "::warning file=${f}::$results"
+            else
+              echo "::error file=${f}::$results"
+              exit=1
+            fi
+          fi
+        done
+
+        if [ "${exit}" == "1" ]; then
+          echo "Compliance error, check for error messages in the \"Run Compliance Tests\" step"
+          echo "You can run this step locally with the ./scripts/ci/check_compliance.py script."
+          exit 1;
+        fi

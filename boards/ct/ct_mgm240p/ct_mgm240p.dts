@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2026 CTHINGS.CO
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include "ct_mgm240p-common.dtsi"
+
+/ {
+    model = "CTHINGS MGM240P";
+    compatible = "cthings,ct-mgm240p", "silabs,mgm240pa32vnn";
+
+    chosen {
+        zephyr,console = &usart0;
+        zephyr,shell-uart = &usart0;
+        zephyr,flash = &flash0;
+        zephyr,sram = &sram0;
+    };
+};
+
+/*
+ * Physical UART connection:
+ *
+ *   PA5 = USART0 TX -> CP_RX
+ *   PA6 = USART0 RX -> CP_TX
+ *
+ * Hardware flow control is intentionally not configured because
+ * PB0/PB1 are not connected to the CP210x on this PCB.
+ */
+&usart0 {
+    current-speed = <115200>;
+    status = "okay";
+};
+
+&cpu0 {
+	clock-frequency = <78000000>;
+};

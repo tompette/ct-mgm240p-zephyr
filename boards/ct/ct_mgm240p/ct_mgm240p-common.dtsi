@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2026 CTHINGS.CO
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * CTHINGS MGM240P hardware:
+ *
+ * SoC: MGM240PA32VNN
+ *
+ * UART:
+ *   USART0 TX = PA5 -> CP_RX
+ *   USART0 RX = PA6 -> CP_TX
+ *   No CTS/RTS are connected on this PCB.
+ *
+ * SWD test points:
+ *   SWCLK = PA1 -> TP12
+ *   SWDIO = PA2 -> TP11
+ *
+ * LEDs:
+ *   LED1 = PA8
+ *   LED2 = PA7
+ */
+
+#include <silabs/xg24/mgm240pa32vnn.dtsi>
+#include "ct_mgm240p-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&gpioa {
+    status = "okay";
+};
+
+/ {
+    aliases {
+        led0 = &led1;
+        led1 = &led2;
+    };
+
+    leds {
+        compatible = "gpio-leds";
+
+        led1: led_1 {
+            gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>;
+            label = "LED1";
+        };
+
+        led2: led_2 {
+            gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
+            label = "LED2";
+        };
+    };
+};
+
+&usart0 {
+    pinctrl-0 = <&usart0_default>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};

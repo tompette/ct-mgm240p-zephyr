@@ -1,0 +1,9 @@
+# Copyright (c) 2026 CTHINGS.CO
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: ct_mgm240p
+  full_name: CTHINGS MGM240P
+  vendor: ct
+  socs:
+    - name: mgm240pa32vnn

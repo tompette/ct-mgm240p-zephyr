@@ -1,0 +1,150 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Silicon Laboratories Inc.
+
+name: Build
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: zephyr-silabs
+
+      - name: Rebase onto the target branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        working-directory: zephyr-silabs
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          git remote -v
+          # Ensure there's no merge commits in the PR
+          [[ "$(git rev-list --merges --count origin/${BASE_REF}..)" == "0" ]] || \
+          (echo "::error ::Merge commits not allowed, rebase instead";false)
+          rm -fr ".git/rebase-apply"
+          rm -fr ".git/rebase-merge"
+          git rebase origin/${BASE_REF}
+          git clean -f -d
+          # debug
+          git log  --pretty=oneline | head -n 10
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: 3.12
+
+      - name: Set up Silicon Labs tools
+        uses: ./zephyr-silabs/.github/actions/action-slt-setup
+        with:
+          package-file: zephyr-silabs/pkg.slt
+
+      - name: Setup Zephyr project
+        uses: zephyrproject-rtos/action-zephyr-setup@360ff9b36e58499d9eb28015cdcde7ca03a5b04d # v1.0.12
+        with:
+          app-path: zephyr-silabs
+          toolchains: arm-zephyr-eabi
+
+      - name: Fetch blobs
+        shell: bash
+        run: |
+          west blobs fetch hal_silabs
+
+      - name: Build Entropy test
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s drivers.entropy \
+            -p siwx917_rb4338a
+
+      - name: Build Flash test
+        shell: bash
+        run: |
+          west twister -v --inline-logs \
+            -s drivers.flash.common.default \
+            -p siwx917_rb4338a
+
+      - name: Build DMA test
+        shell: bash
+        run: |
+          west twister -v --inline-logs \
+            -s drivers.dma.chan_blen_transfer \
+            -p siwx917_rb4338a
+
+      - name: Build Crypto tests
+        shell: bash
+        run: |
+          west twister -v --inline-logs \
+            -p xg24_rb4187c \
+            -p xg27_dk2602a \
+            -p xg29_rb4412a \
+            -T zephyr-silabs/tests/crypto/
+
+      - name: Build Secure Storage samples
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.psa.its.secure_storage.entropy_driver \
+            -p xg24_rb4187c \
+            -p bg29_rb4420a
+
+      - name: Build bootloader samples
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.sysbuild.with_mcuboot \
+            -p xg24_rb4187c \
+            -p xg27_rb4194a \
+            -p bg29_rb4420a
+
+      - name: Build Bluetooth samples
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.bluetooth.peripheral_hr \
+            -s sample.bluetooth.observer \
+            -p xg27_dk2602a \
+            -p siwx917_rb4338a
+
+      - name: Build Prov sample
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.bluetooth.wifi_provisioning_over_ble \
+            -T zephyr-silabs/samples\
+            -p siwx917_rb4338a
+
+      - name: Build Wifi samples
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.net.wifi \
+            -p siwx917_rb4338a
+          west twister -v --inline-logs -K \
+            -s sample.net.wifi.siwx91x_offloaded \
+            -p siwx917_rb4338a
+
+      - name: Build Coex sample
+        shell: bash
+        run: |
+          west twister -v --inline-logs -K \
+            -s sample.bluetooth.wifi_ble_coex_demo \
+            -T zephyr-silabs/samples\
+            -p siwx917_rb4338a
+
+      - name: Build Rail samples
+        shell: bash
+        run: |
+          west twister -v --inline-logs \
+            -s sample.rail.simple_txrx -T zephyr-silabs/samples
